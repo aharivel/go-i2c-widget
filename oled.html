@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLED Display Simulator</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+        }
+        canvas {
+            image-rendering: pixelated; /* Ensures crisp scaling for low-res visuals */
+            border: 2px solid #fff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="oled-display" width="128" height="128"></canvas>
+    <script>
+        // Fetch the canvas element
+        const canvas = document.getElementById('oled-display');
+        const context = canvas.getContext('2d');
+
+ // Function to update the display buffer
+        function updateDisplay(buffer) {
+            const pages = Math.ceil(128 / 8); // Total number of pages (rows of 8 pixels)
+            const bytesPerPage = 128; // Width in bytes per page
+
+            // Default to update the entire display
+            const windowX1 = 0;
+            const windowY1 = 0;
+            const windowX2 = 127;
+            const windowY2 = 127;
+
+            // Calculate first and last pages to update
+            const firstPage = Math.floor(windowY1 / 8);
+            const lastPage = Math.min(pages, Math.ceil((windowY2 + 1) / 8));
+
+            for (let page = firstPage; page < lastPage; page++) {
+                const pageStart = windowX1;
+                const pageEnd = windowX2;
+
+                // Process the buffer for this page
+                for (let x = pageStart; x <= pageEnd; x++) {
+                    const byte = buffer[page * bytesPerPage + x];
+
+                    // Render each bit in the byte as a pixel
+                    for (let bit = 0; bit < 8; bit++) {
+                        const pixelOn = (byte >> bit) & 1;
+                        const y = page * 8 + bit;
+                        const color = pixelOn ? 'white' : 'black';
+
+                        // Draw the pixel
+                        context.fillStyle = color;
+                        context.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+        }
+// Function to fetch the buffer from the server
+function fetchBuffer() {
+    fetch('/buffer')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json(); // Parse the JSON response
+        })
+        .then(data => {
+            if (Array.isArray(data)) { // Ensure that the received data is an array
+                // Create a Uint8Array from the array (if necessary, for performance or other reasons)
+                const buffer = new Uint8Array(data);  
+                console.log("Fetched buffer:", buffer);
+                updateDisplay(buffer);  // Pass the buffer to the updateDisplay function
+            } else {
+                console.error("Invalid buffer data received from the server.");
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching buffer:', error);
+        });
+}
+
+
+
+
+
+        // Fetch the buffer and update the display
+        setInterval(fetchBuffer, 1000); 
+        fetchBuffer();
+    </script>
+</body>
+</html>
+
